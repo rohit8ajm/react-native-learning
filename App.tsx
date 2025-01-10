@@ -11,6 +11,7 @@ import {
   View,
   Animated,
   Image,
+  TouchableOpacity,
 } from 'react-native';
 
 interface Message {
@@ -24,12 +25,15 @@ interface Message {
 interface CarouselItemProps {
   item: string;
   index: number;
+  onCheckboxChange: (index: number) => void; // Callback to handle checkbox change
+  isSelected: boolean;
 }
 
 function App(): React.JSX.Element {
   // State to store messages
   const [messages, setMessages] = useState<Message[]>([]);
   const [message, setMessage] = useState<string>('');
+  const [selectedImages, setSelectedImages] = useState<Set<number>>(new Set()); // Track selected images
   const translateY = useRef(new Animated.Value(0)).current; // Initial position (no translation)
 
   // Function to handle sending a message
@@ -74,12 +78,32 @@ function App(): React.JSX.Element {
     }
   };
 
+  // Function to handle checkbox state change
+  const handleCheckboxChange = (index: number) => {
+    const newSelectedImages = new Set(selectedImages);
+    if (newSelectedImages.has(index)) {
+      newSelectedImages.delete(index); // If image is already selected, unselect it
+    } else {
+      newSelectedImages.add(index); // Otherwise, select it
+    }
+    setSelectedImages(newSelectedImages); // Update selected images state
+  };
+
   // Function to render carousel item (image)
-  const renderCarousel = ({ item }: CarouselItemProps) => {
-    return <Image
-      source={{ uri: item }}
-      style={styles.carouselImage}
-    />;
+  const renderCarousel = ({ item, index, onCheckboxChange, isSelected }: CarouselItemProps) => {
+    return (
+      <View style={styles.imageContainer}>
+        <TouchableOpacity onPress={() => onCheckboxChange(index)}>
+          <Image source={{ uri: item }} style={styles.carouselImage} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.checkbox, isSelected && styles.selectedCheckbox]}
+          onPress={() => onCheckboxChange(index)}
+        >
+          <Text style={styles.checkboxText}>{isSelected ? '✔' : ''}</Text>
+        </TouchableOpacity>
+      </View>
+    );
   };
 
   return (
@@ -110,12 +134,20 @@ function App(): React.JSX.Element {
             </Text>
 
             {/* Render image carousel for bot messages */}
+            {item.type === 'bot' && item.images && (
             <FlatList
               data={item.images}
-              renderItem={renderCarousel}
+              renderItem={({ item, index }) =>
+                renderCarousel({
+                  item,
+                  index,
+                  onCheckboxChange: handleCheckboxChange,
+                  isSelected: selectedImages.has(index),
+                })
+              }
               horizontal={true}
               key={Math.random()}
-            />
+            />)}
 
             <Text style={[styles.timestampText, item.type === 'user' && styles.rightAlignText]}>
               {item.timestamp}
@@ -212,8 +244,7 @@ const styles = StyleSheet.create({
   },
   carouselImage: {
     width: 150,
-    maxHeight: 150,
-    objectFit: "contain",
+    height: 150,
     marginRight: 10,
     borderRadius: 10,
   },
@@ -228,6 +259,28 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  imageContainer: {
+    position: 'relative',
+  },
+  checkbox: {
+    position: 'absolute',
+    top: 5,
+    left: 5,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    padding: 10, // Fixed padding to prevent squeezing
+    borderRadius: 20,
+    width: 24, // Fixed width
+    height: 24, // Fixed height
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectedCheckbox: {
+    backgroundColor: 'rgba(0, 255, 0, 0.5)', // Highlight when selected
+  },
+  checkboxText: {
+    fontSize: 18,
+    color: 'black',
   },
 });
 
