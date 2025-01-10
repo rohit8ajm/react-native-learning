@@ -29,7 +29,7 @@ interface CarouselItemProps {
 function App(): React.JSX.Element {
   // State to store messages
   const [messages, setMessages] = useState<Message[]>([]);
-  const [message, setMessage] = useState<string>(''); 
+  const [message, setMessage] = useState<string>('');
   const translateY = useRef(new Animated.Value(0)).current; // Initial position (no translation)
 
   // Function to handle sending a message
@@ -60,20 +60,26 @@ function App(): React.JSX.Element {
         // Simulate bot reply with carousel images
         const botMessage: Message = {
           id: Date.now().toString(),
-          text: `Bot: ${message}`, 
+          text: `Bot: Here's a carousel of images for you!`,
           type: 'bot',
           timestamp,
+          images: [
+            'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRmCy16nhIbV3pI1qLYHMJKwbH2458oiC9EmA&s',
+            'https://images.pexels.com/photos/674010/pexels-photo-674010.jpeg?auto=compress&cs=tinysrgb&w=600',
+            'https://gratisography.com/wp-content/uploads/2024/11/gratisography-cool-sphere-1170x780.jpg',
+          ],
         };
         setMessages(prevMessages => [botMessage, ...prevMessages]); // Prepend bot message
       }, 1000);
     }
   };
 
-  // Function to render carousel item
+  // Function to render carousel item (image)
   const renderCarousel = ({ item }: CarouselItemProps) => {
-    return (
-      <Image source={{ uri: item }} style={styles.carouselImage} />
-    );
+    return <Image
+      source={{ uri: item }}
+      style={styles.carouselImage}
+    />;
   };
 
   return (
@@ -101,7 +107,15 @@ function App(): React.JSX.Element {
             </Text>
             <Text style={[styles.messageText, item.type === 'user' && styles.rightAlignText]}>
               {item.text}
-            </Text>            
+            </Text>
+
+            {/* Render image carousel for bot messages */}
+            <FlatList
+              data={item.images}
+              renderItem={renderCarousel}
+              horizontal={true}
+              key={Math.random()}
+            />
 
             <Text style={[styles.timestampText, item.type === 'user' && styles.rightAlignText]}>
               {item.timestamp}
@@ -169,13 +183,13 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 0, // Create a modern rounded effect
   },
   botMessage: {
-    backgroundColor: '#e5e5e5',
+    backgroundColor: '#e521e5',
     alignSelf: 'flex-start', // Align bot messages to the left
     borderTopLeftRadius: 0, // Modernize bot bubbles
   },
   messageText: {
     fontSize: 16,
-    color: '#fff', // White text in user message for better contrast
+    color: '#fff', // Change text color for visibility
     marginVertical: 5,
   },
   senderText: {
@@ -193,6 +207,16 @@ const styles = StyleSheet.create({
   rightAlignText: {
     textAlign: 'right', // Align text to the right
   },
+  carouselContainer: {
+    marginTop: 10,
+  },
+  carouselImage: {
+    width: 150,
+    maxHeight: 150,
+    objectFit: "contain",
+    marginRight: 10,
+    borderRadius: 10,
+  },
   headerView: {
     backgroundColor: '#007bff',
     padding: 15,
@@ -205,7 +229,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
   },
-
 });
 
 export default App;
