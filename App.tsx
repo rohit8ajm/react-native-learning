@@ -1,5 +1,5 @@
 import Icon from '@react-native-vector-icons/fontawesome6';
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Button,
   FlatList,
@@ -30,66 +30,44 @@ interface CarouselItemProps {
 }
 
 function App(): React.JSX.Element {
-  // State to store messages
   const [messages, setMessages] = useState<Message[]>([]);
   const [message, setMessage] = useState<string>('');
-  const [selectedImages, setSelectedImages] = useState<Set<number>>(new Set()); // Track selected images
-  const translateY = useRef(new Animated.Value(0)).current; // Initial position (no translation)
+  const [selectedImages, setSelectedImages] = useState<Set<number>>(new Set());
+  const translateY = useRef(new Animated.Value(0)).current;
 
-  // Function to handle sending a message
   const sendMessage = () => {
     if (message.trim()) {
-      const timestamp = new Date().toLocaleTimeString(); // Get current timestamp
-
+      const timestamp = new Date().toLocaleTimeString();
       const newMessage: Message = { id: Date.now().toString(), text: message, type: 'user', timestamp };
 
-      // Animate the user message bubble (slide in from the input area)
       Animated.sequence([
         Animated.timing(translateY, {
-          toValue: 10, // Slight upward slide
+          toValue: 10,
           duration: 100,
           useNativeDriver: true,
         }),
         Animated.timing(translateY, {
-          toValue: 0, // Return to final position
+          toValue: 0,
           duration: 100,
           useNativeDriver: true,
         }),
       ]).start();
 
-      setMessages([newMessage, ...messages]);  // Prepend message to the list
-      setMessage('');  // Clear input field
-
-      setTimeout(() => {
-        // Simulate bot reply with carousel images
-        const botMessage: Message = {
-          id: Date.now().toString(),
-          text: `Bot: Here's a carousel of images for you!`,
-          type: 'bot',
-          timestamp,
-          images: [
-            'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRmCy16nhIbV3pI1qLYHMJKwbH2458oiC9EmA&s',
-            'https://images.pexels.com/photos/674010/pexels-photo-674010.jpeg?auto=compress&cs=tinysrgb&w=600',
-            'https://gratisography.com/wp-content/uploads/2024/11/gratisography-cool-sphere-1170x780.jpg',
-          ],
-        };
-        setMessages(prevMessages => [botMessage, ...prevMessages]); // Prepend bot message
-      }, 1000);
+      setMessages([newMessage, ...messages]);
+      setMessage('');
     }
   };
 
-  // Function to handle checkbox state change
   const handleCheckboxChange = (index: number) => {
     const newSelectedImages = new Set(selectedImages);
     if (newSelectedImages.has(index)) {
-      newSelectedImages.delete(index); // If image is already selected, unselect it
+      newSelectedImages.delete(index);
     } else {
-      newSelectedImages.add(index); // Otherwise, select it
+      newSelectedImages.add(index);
     }
-    setSelectedImages(newSelectedImages); // Update selected images state
+    setSelectedImages(newSelectedImages);
   };
 
-  // Function to render carousel item (image)
   const renderCarousel = ({ item, index, onCheckboxChange, isSelected }: CarouselItemProps) => {
     return (
       <View style={styles.imageContainer}>
@@ -106,6 +84,35 @@ function App(): React.JSX.Element {
     );
   };
 
+  // Simulate bot reply with carousel images when a user sends a message
+  useEffect(() => {
+    if (messages && messages[0] && messages[0].type === 'user' && messages[0].text.toLowerCase().includes("image")) {
+      const timestamp = new Date().toLocaleTimeString();
+      const botMessage: Message = {
+        id: Date.now().toString(),
+        text: `Bot: Here's a carousel of images for you!`,
+        type: 'bot',
+        timestamp,
+        images: [
+          'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRmCy16nhIbV3pI1qLYHMJKwbH2458oiC9EmA&s',
+          'https://images.pexels.com/photos/674010/pexels-photo-674010.jpeg?auto=compress&cs=tinysrgb&w=600',
+          'https://gratisography.com/wp-content/uploads/2024/11/gratisography-cool-sphere-1170x780.jpg',
+        ],
+      };
+      setMessages(prevMessages => [botMessage, ...prevMessages]);
+    } else if(messages && messages[0] && messages[0].type === 'user'){
+      const timestamp = new Date().toLocaleTimeString();
+      const botMessage: Message = {
+        id: Date.now().toString(),
+        text: `Bot: ${messages[0].text}`,
+        type: 'bot',
+        timestamp,
+
+      };
+      setMessages(prevMessages => [botMessage, ...prevMessages]);
+    }
+  }, [messages]);
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar animated={true} backgroundColor="blue" />
@@ -121,10 +128,7 @@ function App(): React.JSX.Element {
         data={messages}
         renderItem={({ item }) => (
           <View
-            style={[
-              styles.messageContainer,
-              item.type === 'bot' ? styles.botMessage : styles.userMessage,
-            ]}
+            style={[styles.messageContainer, item.type === 'bot' ? styles.botMessage : styles.userMessage]}
           >
             <Text style={[styles.senderText, item.type === 'user' && styles.rightAlignText]}>
               {item.type === 'user' ? 'You' : 'Bot'}
@@ -133,21 +137,22 @@ function App(): React.JSX.Element {
               {item.text}
             </Text>
 
-            {/* Render image carousel for bot messages */}
             {item.type === 'bot' && item.images && (
-            <FlatList
-              data={item.images}
-              renderItem={({ item, index }) =>
-                renderCarousel({
-                  item,
-                  index,
-                  onCheckboxChange: handleCheckboxChange,
-                  isSelected: selectedImages.has(index),
-                })
-              }
-              horizontal={true}
-              key={Math.random()}
-            />)}
+              <FlatList
+                data={item.images}
+                renderItem={({ item, index }) =>
+                  renderCarousel({
+                    item,
+                    index,
+                    onCheckboxChange: handleCheckboxChange,
+                    isSelected: selectedImages.has(index),
+                  })
+                }
+                horizontal={true}
+                keyExtractor={(item, index) => `${index}`} // Stable key based on index
+                style={styles.carouselList}
+              />
+            )}
 
             <Text style={[styles.timestampText, item.type === 'user' && styles.rightAlignText]}>
               {item.timestamp}
@@ -155,10 +160,9 @@ function App(): React.JSX.Element {
           </View>
         )}
         keyExtractor={(item) => item.id}
-        inverted // To show the latest message at the bottom
+        inverted
       />
 
-      {/* Input field */}
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
@@ -207,21 +211,21 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 5,
-    elevation: 3, // Android shadow
+    elevation: 3,
   },
   userMessage: {
     backgroundColor: '#0066cc',
-    alignSelf: 'flex-end', // Align user messages to the right
-    borderTopRightRadius: 0, // Create a modern rounded effect
+    alignSelf: 'flex-end',
+    borderTopRightRadius: 0,
   },
   botMessage: {
     backgroundColor: '#e521e5',
-    alignSelf: 'flex-start', // Align bot messages to the left
-    borderTopLeftRadius: 0, // Modernize bot bubbles
+    alignSelf: 'flex-start',
+    borderTopLeftRadius: 0,
   },
   messageText: {
     fontSize: 16,
-    color: '#fff', // Change text color for visibility
+    color: '#fff',
     marginVertical: 5,
   },
   senderText: {
@@ -239,7 +243,8 @@ const styles = StyleSheet.create({
   rightAlignText: {
     textAlign: 'right', // Align text to the right
   },
-  carouselContainer: {
+  carouselList: {
+    maxHeight: 150, // Ensure carousel images don't elongate the message
     marginTop: 10,
   },
   carouselImage: {
@@ -268,15 +273,15 @@ const styles = StyleSheet.create({
     top: 5,
     left: 5,
     backgroundColor: 'rgba(255, 255, 255, 0.5)',
-    padding: 10, // Fixed padding to prevent squeezing
+    padding: 10,
     borderRadius: 20,
-    width: 24, // Fixed width
-    height: 24, // Fixed height
+    width: 24,
+    height: 24,
     justifyContent: 'center',
     alignItems: 'center',
   },
   selectedCheckbox: {
-    backgroundColor: 'rgba(0, 255, 0, 0.5)', // Highlight when selected
+    backgroundColor: 'rgba(0, 255, 0, 0.5)',
   },
   checkboxText: {
     fontSize: 18,
