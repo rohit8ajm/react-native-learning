@@ -1,6 +1,5 @@
-
 import Icon from '@react-native-vector-icons/fontawesome6';
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Button,
   FlatList,
@@ -10,126 +9,203 @@ import {
   Text,
   TextInput,
   View,
+  Animated,
+  Image,
 } from 'react-native';
 
 interface Message {
   id: string;
   text: string;
   type: string;
+  timestamp: string;
+  images?: string[]; // Optional property to hold image URLs
+}
+
+interface CarouselItemProps {
+  item: string;
+  index: number;
 }
 
 function App(): React.JSX.Element {
-
   // State to store messages
-  const [messages, setMessages] = useState([]);
-  const [message, setMessage] = useState<string>('');
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [message, setMessage] = useState<string>(''); 
+  const translateY = useRef(new Animated.Value(0)).current; // Initial position (no translation)
 
   // Function to handle sending a message
   const sendMessage = () => {
     if (message.trim()) {
-      const newMessage: Message = { id: Date.now().toString(), text: message, type: "user" };
+      const timestamp = new Date().toLocaleTimeString(); // Get current timestamp
+
+      const newMessage: Message = { id: Date.now().toString(), text: message, type: 'user', timestamp };
+
+      // Animate the user message bubble (slide in from the input area)
+      Animated.sequence([
+        Animated.timing(translateY, {
+          toValue: 10, // Slight upward slide
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(translateY, {
+          toValue: 0, // Return to final position
+          duration: 100,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
       setMessages([newMessage, ...messages]);  // Prepend message to the list
       setMessage('');  // Clear input field
 
       setTimeout(() => {
+        // Simulate bot reply with carousel images
         const botMessage: Message = {
           id: Date.now().toString(),
-          text: `Bot: ${message}`, // Bot echoes user message
-          type: 'bot'
+          text: `Bot: ${message}`, 
+          type: 'bot',
+          timestamp,
         };
         setMessages(prevMessages => [botMessage, ...prevMessages]); // Prepend bot message
       }, 1000);
     }
   };
 
+  // Function to render carousel item
+  const renderCarousel = ({ item }: CarouselItemProps) => {
+    return (
+      <Image source={{ uri: item }} style={styles.carouselImage} />
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-
-      <StatusBar
-        animated={true}
-        backgroundColor="blue"
-      />
+      <StatusBar animated={true} backgroundColor="blue" />
 
       <View style={styles.headerView}>
-        <Icon name='bars' iconStyle='solid' size={20} color="#fff" />
+        <Icon name="bars" iconStyle="solid" size={20} color="#fff" />
         <Text style={styles.headerText}>Chat Application!</Text>
-        <Icon name='share' iconStyle='solid' size={20} color="#fff" />
+        <Icon name="share" iconStyle="solid" size={20} color="#fff" />
       </View>
 
       <FlatList
+        style={{ paddingLeft: 5, paddingRight: 5 }}
         data={messages}
         renderItem={({ item }) => (
-          <View style={[styles.messageContainer, item.type === "bot" ? styles.botMessage : styles.userMessage]}>
-            <Text style={styles.messageText}>{item.text}</Text>
+          <View
+            style={[
+              styles.messageContainer,
+              item.type === 'bot' ? styles.botMessage : styles.userMessage,
+            ]}
+          >
+            <Text style={[styles.senderText, item.type === 'user' && styles.rightAlignText]}>
+              {item.type === 'user' ? 'You' : 'Bot'}
+            </Text>
+            <Text style={[styles.messageText, item.type === 'user' && styles.rightAlignText]}>
+              {item.text}
+            </Text>            
+
+            <Text style={[styles.timestampText, item.type === 'user' && styles.rightAlignText]}>
+              {item.timestamp}
+            </Text>
           </View>
         )}
-        keyExtractor={item => item.id}
+        keyExtractor={(item) => item.id}
         inverted // To show the latest message at the bottom
       />
 
+      {/* Input field */}
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
           value={message}
           onChangeText={setMessage}
           placeholder="Type a message"
+          multiline={true}
         />
         <Button title="Send" onPress={sendMessage} />
       </View>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'flex-end',
+    backgroundColor: '#f4f4f9',
   },
   inputContainer: {
     flexDirection: 'row',
     padding: 10,
     borderTopWidth: 1,
     borderTopColor: '#ddd',
+    backgroundColor: '#fff',
   },
   input: {
     flex: 1,
     borderWidth: 1,
     borderColor: '#ccc',
-    borderRadius: 20,
+    borderRadius: 25,
     paddingLeft: 10,
     marginRight: 10,
+    paddingVertical: 8,
+    backgroundColor: '#f5f5f5',
   },
   messageContainer: {
-    padding: 10,
-    marginBottom: 5,
-    borderRadius: 10,
+    padding: 15,
+    marginBottom: 10,
+    borderRadius: 25,
     maxWidth: '80%',
+    marginTop: 5,
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 3, // Android shadow
   },
   userMessage: {
-    backgroundColor: '#d1e7fd',
+    backgroundColor: '#0066cc',
     alignSelf: 'flex-end', // Align user messages to the right
+    borderTopRightRadius: 0, // Create a modern rounded effect
   },
   botMessage: {
     backgroundColor: '#e5e5e5',
     alignSelf: 'flex-start', // Align bot messages to the left
+    borderTopLeftRadius: 0, // Modernize bot bubbles
   },
   messageText: {
-    fontSize: 15,
-    color: '#333',
-    flexWrap: 'wrap'
+    fontSize: 16,
+    color: '#fff', // White text in user message for better contrast
+    marginVertical: 5,
+  },
+  senderText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#fff',
+    opacity: 0.8,
+  },
+  timestampText: {
+    fontSize: 10,
+    color: '#ccc',
+    textAlign: 'right',
+    marginTop: 5,
+  },
+  rightAlignText: {
+    textAlign: 'right', // Align text to the right
   },
   headerView: {
-    backgroundColor: 'blue',
-    padding: 10,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center"
+    backgroundColor: '#007bff',
+    padding: 15,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   headerText: {
-    color: "white",
+    color: 'white',
     fontWeight: 'bold',
-    fontSize: 15
+    fontSize: 16,
   },
+
 });
 
 export default App;
