@@ -13,6 +13,7 @@ import {
   Image,
   TouchableOpacity,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 interface Message {
   id: string;
@@ -33,6 +34,8 @@ function App(): React.JSX.Element {
   const [messages, setMessages] = useState<Message[]>([]);
   const [message, setMessage] = useState<string>('');
   const [selectedImages, setSelectedImages] = useState<Set<number>>(new Set());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [date, setDate] = useState(new Date());
   const translateY = useRef(new Animated.Value(0)).current;
 
   const sendMessage = () => {
@@ -66,6 +69,17 @@ function App(): React.JSX.Element {
       newSelectedImages.add(index);
     }
     setSelectedImages(newSelectedImages);
+  };
+
+  const handleQuickReply = (reply: string) => {
+    const timestamp = new Date().toLocaleTimeString();
+    const botMessage: Message = {
+      id: Date.now().toString(),
+      text: `Bot: You selected "${reply}"`,
+      type: 'bot',
+      timestamp,
+    };
+    setMessages(prevMessages => [botMessage, ...prevMessages]);
   };
 
   const renderCarousel = ({ item, index, onCheckboxChange, isSelected }: CarouselItemProps) => {
@@ -107,11 +121,25 @@ function App(): React.JSX.Element {
         text: `Bot: ${messages[0].text}`,
         type: 'bot',
         timestamp,
-
       };
       setMessages(prevMessages => [botMessage, ...prevMessages]);
     }
   }, [messages]);
+
+  const handleDateChange = (event: any, selectedDate: Date | undefined) => {
+    setShowDatePicker(false);
+    if (selectedDate) {
+      setDate(selectedDate);
+      const timestamp = new Date().toLocaleTimeString();
+      const botMessage: Message = {
+        id: Date.now().toString(),
+        text: `Bot: You selected ${selectedDate.toLocaleString()}`,
+        type: 'bot',
+        timestamp,
+      };
+      setMessages(prevMessages => [botMessage, ...prevMessages]);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -163,6 +191,25 @@ function App(): React.JSX.Element {
         inverted
       />
 
+      {/* Quick Replies */}
+      <View style={styles.quickReplies}>
+        <TouchableOpacity onPress={() => handleQuickReply('Option 1')}>
+          <View style={styles.quickReplyButton}>
+            <Text style={styles.quickReplyText}>Option 1</Text>
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => handleQuickReply('Option 2')}>
+          <View style={styles.quickReplyButton}>
+            <Text style={styles.quickReplyText}>Option 2</Text>
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => handleQuickReply('Option 3')}>
+          <View style={styles.quickReplyButton}>
+            <Text style={styles.quickReplyText}>Option 3</Text>
+          </View>
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
@@ -172,7 +219,18 @@ function App(): React.JSX.Element {
           multiline={true}
         />
         <Button title="Send" onPress={sendMessage} />
+        <Button title="Pick Date" onPress={() => setShowDatePicker(true)} />
       </View>
+
+      {/* Date Time Picker */}
+      {showDatePicker && (
+        <DateTimePicker
+          value={date}
+          mode="date"
+          is24Hour={true}
+          onChange={handleDateChange}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -199,6 +257,20 @@ const styles = StyleSheet.create({
     marginRight: 10,
     paddingVertical: 8,
     backgroundColor: '#f5f5f5',
+  },
+  quickReplies: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    padding: 10,
+  },
+  quickReplyButton: {
+    backgroundColor: '#007bff',
+    padding: 10,
+    borderRadius: 25,
+  },
+  quickReplyText: {
+    color: 'white',
+    fontSize: 16,
   },
   messageContainer: {
     padding: 15,
@@ -241,7 +313,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   rightAlignText: {
-    textAlign: 'right', // Align text to the right
+    textAlign: 'right',
   },
   carouselList: {
     maxHeight: 150, // Ensure carousel images don't elongate the message
