@@ -32,16 +32,18 @@ interface CarouselItemProps {
 
 function App(): React.JSX.Element {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [message, setMessage] = useState<string>('');
-  const [selectedImages, setSelectedImages] = useState<Set<number>>(new Set());
+  const [selectedImages, setSelectedImages] = useState<Set<number>>(new Set()); // Track selected items
+  const [quantity, setQuantity] = useState<string>(''); // State for tracking quantity input
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [date, setDate] = useState(new Date());
+  const [orderDetails, setOrderDetails] = useState<any>({});
   const translateY = useRef(new Animated.Value(0)).current;
 
+  // Function to send messages to the bot
   const sendMessage = () => {
-    if (message.trim()) {
+    if (quantity.trim()) {
       const timestamp = new Date().toLocaleTimeString();
-      const newMessage: Message = { id: Date.now().toString(), text: message, type: 'user', timestamp };
+      const newMessage: Message = { id: Date.now().toString(), text: quantity, type: 'user', timestamp };
 
       Animated.sequence([
         Animated.timing(translateY, {
@@ -57,10 +59,11 @@ function App(): React.JSX.Element {
       ]).start();
 
       setMessages([newMessage, ...messages]);
-      setMessage('');
+      setQuantity('');
     }
   };
 
+  // Function to handle selecting products from the carousel
   const handleCheckboxChange = (index: number) => {
     const newSelectedImages = new Set(selectedImages);
     if (newSelectedImages.has(index)) {
@@ -71,6 +74,7 @@ function App(): React.JSX.Element {
     setSelectedImages(newSelectedImages);
   };
 
+  // Function to handle user replies
   const handleQuickReply = (reply: string) => {
     const timestamp = new Date().toLocaleTimeString();
     const botMessage: Message = {
@@ -80,8 +84,68 @@ function App(): React.JSX.Element {
       timestamp,
     };
     setMessages(prevMessages => [botMessage, ...prevMessages]);
+
+    if (reply.toLowerCase() === 'create order') {
+      const botMessageForItems = {
+        id: Date.now().toString(),
+        text: 'Bot: Here are some items you can order. Please select one.',
+        type: 'bot',
+        timestamp: new Date().toLocaleTimeString(),
+        images: [
+          'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRmCy16nhIbV3pI1qLYHMJKwbH2458oiC9EmA&s',
+          'https://images.pexels.com/photos/674010/pexels-photo-674010.jpeg?auto=compress&cs=tinysrgb&w=600',
+          'https://gratisography.com/wp-content/uploads/2024/11/gratisography-cool-sphere-1170x780.jpg',
+        ],
+      };
+      setMessages(prevMessages => [botMessageForItems, ...prevMessages]);
+    }
   };
 
+  // Function to handle order steps (quantity, date, instructions, etc.)
+  const handleOrder = (step: string, response: string) => {
+    const timestamp = new Date().toLocaleTimeString();
+
+    if (step === 'quantity') {
+      setOrderDetails({ ...orderDetails, quantity: response });
+      const botMessage: Message = {
+        id: Date.now().toString(),
+        text: `Bot: You selected a quantity of ${response}. Do you have a preferred delivery date?`,
+        type: 'bot',
+        timestamp,
+      };
+      setMessages(prevMessages => [botMessage, ...prevMessages]);
+    } else if (step === 'date') {
+      setOrderDetails({ ...orderDetails, deliveryDate: response });
+      const botMessage: Message = {
+        id: Date.now().toString(),
+        text: `Bot: You selected ${response} for delivery. Any special instructions?`,
+        type: 'bot',
+        timestamp,
+      };
+      setMessages(prevMessages => [botMessage, ...prevMessages]);
+    } else if (step === 'instructions') {
+      setOrderDetails({ ...orderDetails, instructions: response });
+      const botMessage: Message = {
+        id: Date.now().toString(),
+        text: `Bot: You added the following instructions: "${response}". Confirm your order: ${orderDetails.quantity} of selected items for delivery on ${orderDetails.deliveryDate}.`,
+        type: 'bot',
+        timestamp,
+      };
+      setMessages(prevMessages => [botMessage, ...prevMessages]);
+    }
+  };
+
+  // Function to handle the date change from the DateTimePicker
+  const handleDateChange = (event: any, selectedDate: Date | undefined) => {
+    setShowDatePicker(false);
+    if (selectedDate) {
+      setDate(selectedDate);
+      const formattedDate = selectedDate.toLocaleDateString();
+      handleOrder('date', formattedDate);
+    }
+  };
+
+  // Function to render product images as a carousel with checkboxes
   const renderCarousel = ({ item, index, onCheckboxChange, isSelected }: CarouselItemProps) => {
     return (
       <View style={styles.imageContainer}>
@@ -98,48 +162,30 @@ function App(): React.JSX.Element {
     );
   };
 
-  // Simulate bot reply with carousel images when a user sends a message
   useEffect(() => {
-    if (messages && messages[0] && messages[0].type === 'user' && messages[0].text.toLowerCase().includes("image")) {
-      const timestamp = new Date().toLocaleTimeString();
-      const botMessage: Message = {
+    if (messages.length === 0) {
+      const initialMessage = {
         id: Date.now().toString(),
-        text: `Bot: Here's a carousel of images for you!`,
+        text: 'Bot: Hi! How can I help you today? Do you want to create an order or check order status?',
         type: 'bot',
-        timestamp,
-        images: [
-          'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRmCy16nhIbV3pI1qLYHMJKwbH2458oiC9EmA&s',
-          'https://images.pexels.com/photos/674010/pexels-photo-674010.jpeg?auto=compress&cs=tinysrgb&w=600',
-          'https://gratisography.com/wp-content/uploads/2024/11/gratisography-cool-sphere-1170x780.jpg',
-        ],
+        timestamp: new Date().toLocaleTimeString(),
       };
-      setMessages(prevMessages => [botMessage, ...prevMessages]);
-    } else if(messages && messages[0] && messages[0].type === 'user'){
-      const timestamp = new Date().toLocaleTimeString();
-      const botMessage: Message = {
-        id: Date.now().toString(),
-        text: `Bot: ${messages[0].text}`,
-        type: 'bot',
-        timestamp,
-      };
-      setMessages(prevMessages => [botMessage, ...prevMessages]);
+      setMessages([initialMessage]);
     }
   }, [messages]);
 
-  const handleDateChange = (event: any, selectedDate: Date | undefined) => {
-    setShowDatePicker(false);
-    if (selectedDate) {
-      setDate(selectedDate);
-      const timestamp = new Date().toLocaleTimeString();
-      const botMessage: Message = {
+  // Effect to handle the flow once the product is selected and the user has been prompted to enter quantity
+  useEffect(() => {
+    if (selectedImages.size > 0 && messages.length > 0 && messages[0].text.includes('select one')) {
+      const quantityPromptMessage = {
         id: Date.now().toString(),
-        text: `Bot: You selected ${selectedDate.toLocaleString()}`,
+        text: 'Bot: Please enter the quantity of the selected item(s).',
         type: 'bot',
-        timestamp,
+        timestamp: new Date().toLocaleTimeString(),
       };
-      setMessages(prevMessages => [botMessage, ...prevMessages]);
+      setMessages(prevMessages => [quantityPromptMessage, ...prevMessages]);
     }
-  };
+  }, [selectedImages]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -147,7 +193,7 @@ function App(): React.JSX.Element {
 
       <View style={styles.headerView}>
         <Icon name="bars" iconStyle="solid" size={20} color="#fff" />
-        <Text style={styles.headerText}>Chat Application!</Text>
+        <Text style={styles.headerText}>Order System</Text>
         <Icon name="share" iconStyle="solid" size={20} color="#fff" />
       </View>
 
@@ -164,7 +210,6 @@ function App(): React.JSX.Element {
             <Text style={[styles.messageText, item.type === 'user' && styles.rightAlignText]}>
               {item.text}
             </Text>
-
             {item.type === 'bot' && item.images && (
               <FlatList
                 data={item.images}
@@ -177,11 +222,10 @@ function App(): React.JSX.Element {
                   })
                 }
                 horizontal={true}
-                keyExtractor={(item, index) => `${index}`} // Stable key based on index
+                keyExtractor={(item, index) => `${index}`}
                 style={styles.carouselList}
               />
             )}
-
             <Text style={[styles.timestampText, item.type === 'user' && styles.rightAlignText]}>
               {item.timestamp}
             </Text>
@@ -191,21 +235,15 @@ function App(): React.JSX.Element {
         inverted
       />
 
-      {/* Quick Replies */}
       <View style={styles.quickReplies}>
-        <TouchableOpacity onPress={() => handleQuickReply('Option 1')}>
+        <TouchableOpacity onPress={() => handleQuickReply('Create Order')}>
           <View style={styles.quickReplyButton}>
-            <Text style={styles.quickReplyText}>Option 1</Text>
+            <Text style={styles.quickReplyText}>Create Order</Text>
           </View>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => handleQuickReply('Option 2')}>
+        <TouchableOpacity onPress={() => handleQuickReply('Check Order Status')}>
           <View style={styles.quickReplyButton}>
-            <Text style={styles.quickReplyText}>Option 2</Text>
-          </View>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => handleQuickReply('Option 3')}>
-          <View style={styles.quickReplyButton}>
-            <Text style={styles.quickReplyText}>Option 3</Text>
+            <Text style={styles.quickReplyText}>Check Order Status</Text>
           </View>
         </TouchableOpacity>
       </View>
@@ -213,13 +251,13 @@ function App(): React.JSX.Element {
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
-          value={message}
-          onChangeText={setMessage}
-          placeholder="Type a message"
-          multiline={true}
+          value={quantity}
+          onChangeText={setQuantity}
+          placeholder="Enter quantity"
+          keyboardType="numeric"
         />
-        <Button title="Send" onPress={sendMessage} />
-        <Button title="Pick Date" onPress={() => setShowDatePicker(true)} />
+        <Button title="Send" onPress={() => handleOrder('quantity', quantity)} />
+        <Button title="Pick Delivery Date" onPress={() => setShowDatePicker(true)} />
       </View>
 
       {/* Date Time Picker */}
