@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@react-native-community/datetimepicker": "^8.2.0",
+    "@react-native-picker/picker": "^2.11.0",
     "@react-native-vector-icons/common": "^11.0.0",
     "@react-native-vector-icons/evil-icons": "^1.10.1",
     "@react-native-vector-icons/fontawesome6": "^6.7.1",

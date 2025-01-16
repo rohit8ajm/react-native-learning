@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { Picker } from '@react-native-picker/picker';
 
 interface Message {
   id: string;
@@ -37,6 +38,7 @@ function App(): React.JSX.Element {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [date, setDate] = useState(new Date());
   const [orderDetails, setOrderDetails] = useState<any>({});
+  const [instructions, setInstructions] = useState<string>(''); // State for additional instructions
   const translateY = useRef(new Animated.Value(0)).current;
 
   // Function to send messages to the bot
@@ -179,7 +181,7 @@ function App(): React.JSX.Element {
     if (selectedImages.size > 0 && messages.length > 0 && messages[0].text.includes('select one')) {
       const quantityPromptMessage = {
         id: Date.now().toString(),
-        text: 'Bot: Please enter the quantity of the selected item(s).',
+        text: 'Bot: Please select the quantity of the selected item(s).',
         type: 'bot',
         timestamp: new Date().toLocaleTimeString(),
       };
@@ -210,6 +212,25 @@ function App(): React.JSX.Element {
             <Text style={[styles.messageText, item.type === 'user' && styles.rightAlignText]}>
               {item.text}
             </Text>
+
+            {/* Show dropdown for quantity selection inside bot message */}
+            {item.type === 'bot' && item.text.includes('quantity') && (
+              <View>
+                <Picker
+                  selectedValue={quantity}
+                  onValueChange={(itemValue) => setQuantity(itemValue)}
+                  style={styles.picker}
+                >
+                  <Picker.Item label="1" value="1" />
+                  <Picker.Item label="2" value="2" />
+                  <Picker.Item label="3" value="3" />
+                  <Picker.Item label="4" value="4" />
+                  <Picker.Item label="5" value="5" />
+                </Picker>
+              </View>
+            )}
+
+            {/* Show carousel images if present */}
             {item.type === 'bot' && item.images && (
               <FlatList
                 data={item.images}
@@ -222,16 +243,17 @@ function App(): React.JSX.Element {
                   })
                 }
                 horizontal={true}
-                keyExtractor={(item, index) => `${index}`}
+                keyExtractor={(index) => `image-${index}`}
                 style={styles.carouselList}
               />
             )}
+
             <Text style={[styles.timestampText, item.type === 'user' && styles.rightAlignText]}>
               {item.timestamp}
             </Text>
           </View>
         )}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.id + '-' + item.timestamp + '-' + new Date().getMilliseconds()}  // Make the key unique by combining id and timestamp
         inverted
       />
 
@@ -249,14 +271,14 @@ function App(): React.JSX.Element {
       </View>
 
       <View style={styles.inputContainer}>
+        {/* Additional Instructions Input */}
         <TextInput
           style={styles.input}
-          value={quantity}
-          onChangeText={setQuantity}
-          placeholder="Enter quantity"
-          keyboardType="numeric"
+          value={instructions}
+          onChangeText={setInstructions}
+          placeholder="Enter additional instructions"
         />
-        <Button title="Send" onPress={() => handleOrder('quantity', quantity)} />
+        <Button title="Send" onPress={() => handleOrder('instructions', instructions)} />
         <Button title="Pick Delivery Date" onPress={() => setShowDatePicker(true)} />
       </View>
 
@@ -295,6 +317,13 @@ const styles = StyleSheet.create({
     marginRight: 10,
     paddingVertical: 8,
     backgroundColor: '#f5f5f5',
+  },
+  picker: {
+    // height: 150,  // Increase the height for better visibility
+    width: '100%', // Full width of the screen
+    backgroundColor: '#fff', // Add background color to make it visible
+    borderRadius: 10,  // Optional: add rounded corners for style
+    marginTop: 10,
   },
   quickReplies: {
     flexDirection: 'row',
